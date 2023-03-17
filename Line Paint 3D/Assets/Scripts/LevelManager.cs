@@ -8,38 +8,60 @@ namespace LinePaint
     {
         public Cell block;
         [SerializeField] private float _cellSize;
-        [SerializeField] private int _heigth;
-        [SerializeField] private int _width;
+      
         [SerializeField] private CameraZoom _gameCamera;
+        [SerializeField] private CameraZoom solutionCamera;
         [SerializeField] private BrushController _brush;
         [SerializeField] private LinePaintScript linePaintPrefab;
+        [SerializeField] private List<LevelScriptableData> _levelScriptables;
+        [SerializeField] private Vector3 _gridOriginPos;
+        [SerializeField] private UIManager uiManager;
+
+        private int _heigth;
+        private int _width;
         private Grid grid;
         private SwipeController swipeControl;
         private BrushController _currentBrush;
         private List<Connection> inProgressPattern = new List<Connection>();
         private List<LinePaintScript> connectedLinePaints = new List<LinePaintScript>();
+        
         private Cell[,] cells;
         
 
         // Start is called before the first frame update
         void Start()
         {
+            GameManager.gameStatus = GameStatus.Playing;
+            GameManager.currentLevel = PlayerPrefs.GetInt("CurrentLevel", 0);
+            uiManager.LevelText.text = "Level " + (GameManager.currentLevel + 1);
             grid = new Grid();
+            _width = _levelScriptables[GameManager.currentLevel].Width;
+            _heigth = _levelScriptables[GameManager.currentLevel].Height;
             swipeControl = new SwipeController();
             swipeControl.SetLevelManager(this);
+            CompleteBoard();
             grid.Initialize(_width, _heigth, _cellSize,Vector3.zero);
            
             _gameCamera.ZoomPerspectiveCamera(_width, _heigth);
             cells = new Cell[_width, _heigth];
+
+            
+
             CreateGrid(Vector3.zero);
-            _currentBrush = Instantiate(_brush, grid.GetCellWorldPosition(0, 0), Quaternion.identity);
-            _currentBrush.Coords = new Vector2Int(0, 0);
+            //  _currentBrush = Instantiate(_brush, grid.GetCellWorldPosition(0, 0), Quaternion.identity);
+            _currentBrush = Instantiate(_brush, grid.GetCellWorldPosition(_levelScriptables[GameManager.currentLevel].BrushStartCoords.x, _levelScriptables[GameManager.currentLevel].BrushStartCoords.y), Quaternion.identity);
+
+           // _currentBrush.Coords = new Vector2Int(0, 0);
+
+            _currentBrush.Coords = _levelScriptables[GameManager.currentLevel].BrushStartCoords;
+            Vector3 brushStartPos = grid.GetCellWorldPosition(_levelScriptables[GameManager.currentLevel].BrushStartCoords.x, _levelScriptables[GameManager.currentLevel].BrushStartCoords.y);
+            _currentBrush.transform.position = brushStartPos;
         }
 
         // Update is called once per frame
         void Update()
         {
-            if(swipeControl!=null)
+            if(swipeControl!=null &&GameManager.gameStatus==GameStatus.Playing )
             {
                 swipeControl.OnUpdate();
             }
@@ -95,6 +117,28 @@ namespace LinePaint
                     RemoveConnectLinePaint(_currentBrush.Coords, newcoords);
                 }
 
+                if (_levelScriptables[GameManager.currentLevel].completePattern.Count <= inProgressPattern.Count)
+                {
+                    //Check for win
+                    if (IsLevelComplete())
+                    {
+                       // SoundManager.Instance.PlayFx(FxType.Victory);
+                        GameManager.gameStatus = GameStatus.Complete;
+                        Debug.Log("level completed");
+                        GameManager.currentLevel++;
+                        if (GameManager.currentLevel > _levelScriptables.Count - 1)
+                        {
+                            GameManager.currentLevel = 0;
+                        }
+                        PlayerPrefs.SetInt("CurrentLevel", GameManager.currentLevel);
+                      //  GameManager.totalDiamonds += 15;
+                      //  PlayerPrefs.SetInt("TotalDiamonds", GameManager.totalDiamonds);
+
+                        uiManager.LevelCompleted();
+                    }
+
+                }
+
                 _currentBrush.transform.position = finalPos;
                 _currentBrush.Coords = newcoords;
             }
@@ -141,6 +185,47 @@ namespace LinePaint
             }
         }
 
+        private void CompleteBoard()
+        {
+              Vector3 offset = new Vector3((_levelScriptables[GameManager.currentLevel].Width - _cellSize) / 2, 5f, (_levelScriptables[GameManager.currentLevel].Height - _cellSize) / 2);
+            // Vector3 gridOriginPos = solutionCamera.transform.position - offset;
+            solutionCamera.transform.position += offset;
+              solutionCamera.ZoomOrthographicSizeCamera(_levelScriptables[GameManager.currentLevel].Width, _levelScriptables[GameManager.currentLevel].Height);
+
+            grid.Initialize(_width, _heigth,_cellSize,_gridOriginPos);
+
+            for (int i = 0; i < _levelScriptables[GameManager.currentLevel].completePattern.Count; i++)
+            {
+                Vector3 startPos = /*gridOriginPos +*/ grid.GetCellWorldPosition(_levelScriptables[GameManager.currentLevel].completePattern[i].StartCoords.x,
+                    _levelScriptables[GameManager.currentLevel].completePattern[i].StartCoords.y);
+
+                Vector3 endPos = /*gridOriginPos +*/ grid.GetCellWorldPosition(_levelScriptables[GameManager.currentLevel].completePattern[i].EndCoords.x,
+                    _levelScriptables[GameManager.currentLevel].completePattern[i].EndCoords.y);
+
+                LinePaintScript linePaint = Instantiate(linePaintPrefab, new Vector3(0, 0.2f, 0), Quaternion.identity);
+                linePaint.SetRendererPosition(startPos /*+ new Vector3(0, 0.2f, 0)*/,
+                    endPos /*+ new Vector3(0, 0.2f, 0)*/);
+            }
+        }
+
+        private bool IsLevelComplete()
+        {
+            //if player has done more connection than required we return false
+            if (_levelScriptables[GameManager.currentLevel].completePattern.Count != inProgressPattern.Count)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _levelScriptables[GameManager.currentLevel].completePattern.Count; i++)
+            {
+                if (!ConnectionAlreadyDone(_levelScriptables[GameManager.currentLevel].completePattern[i].StartCoords, _levelScriptables[GameManager.currentLevel].completePattern[i].EndCoords, false))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
 
 
     }

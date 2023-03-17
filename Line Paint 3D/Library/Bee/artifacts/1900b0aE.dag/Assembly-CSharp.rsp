@@ -359,11 +359,14 @@
 "Assets/Scripts/Cell.cs"
 "Assets/Scripts/CellPlacer.cs"
 "Assets/Scripts/Connection.cs"
+"Assets/Scripts/GameManager.cs"
 "Assets/Scripts/Grid.cs"
 "Assets/Scripts/GridManager.cs"
 "Assets/Scripts/LevelManager.cs"
+"Assets/Scripts/LevelScriptableData.cs"
 "Assets/Scripts/LinePaintScript.cs"
 "Assets/Scripts/SwipeController.cs"
+"Assets/Scripts/UIManager.cs"
 -langversion:9.0
 
 /deterministic

@@ -8,8 +8,8 @@ namespace LinePaint
     public class Connection 
     {
 
-        private Vector2Int _startCoords;
-        private Vector2Int _endCoords;
+       [SerializeField] private Vector2Int _startCoords;
+       [SerializeField] private Vector2Int _endCoords;
 
         public Vector2Int StartCoords { get => _startCoords; }
         public Vector2Int EndCoords { get => _endCoords; }
